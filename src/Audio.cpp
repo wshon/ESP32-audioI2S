@@ -6330,7 +6330,7 @@ void Audio::startAudioTask() {
     xTaskCreatePinnedToCore(
         &Audio::taskWrapper,    /* Function to implement the task */
         "PeriodicTask",         /* Name of the task */
-        3300,                   /* Stack size in words */
+        8600,                   /* Stack size in words */
         this,                   /* Task input parameter */
         2,                      /* Priority of the task */
         &m_audioTaskHandle,     /* Task handle. */
