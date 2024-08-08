@@ -338,15 +338,11 @@ int8_t opus_FramePacking_Code0(uint8_t *inbuf, int32_t *bytesLeft, int16_t *outb
     if(s_mode == MODE_SILK_ONLY || s_mode == MODE_HYBRID){
         int payloadSize_ms = max(10, 1000 * samplesPerFrame / 48000);
         silk_InitDecoder(); // reset silk decoder
-        int32_t      silk_frame_size;
+        silk_setRawParams(1, 2, 20, 16000, 48000);
+        silk_Decode(0, 1, (int16_t*)outbuf, &ret);
+        //    outbuf += silk_frame_size * 2;
 
-        do{
-            silk_setRawParams(1, 2, payloadSize_ms, 8000, 48000);
-            silk_Decode(0, 1, (int16_t*)outbuf, &silk_frame_size);
-            outbuf += silk_frame_size * 2;
-            decoded_samples += silk_frame_size;
-        }while(decoded_samples < packetLen);
-log_w("ret %i", ret);
+//log_w("ret %i", ret);
     }
     if(s_mode == MODE_CELT_ONLY){
         ec_dec_init((uint8_t *)inbuf, packetLen);
