@@ -312,6 +312,24 @@ FramePacking:            // https://www.tech-invite.com/y65/tinv-ietf-rfc-6716-2
     return ret;
 }
 //----------------------------------------------------------------------------------------------------------------------------------------------------
+int32_t opus_decode_frame(uint8_t *inbuf, int16_t *outbuf, int32_t packetLen, uint16_t samplesPerFrame) {
+    int32_t ret = 0;
+    int32_t silk_err = 0; (void)silk_err;
+    if(s_mode == MODE_SILK_ONLY || s_mode == MODE_HYBRID){
+        int payloadSize_ms = max(10, 1000 * samplesPerFrame / 48000);
+        silk_InitDecoder(); // reset silk decoder
+        silk_setRawParams(1, 2, payloadSize_ms, 16000, 48000);
+        silk_err = silk_Decode(0, 1, (int16_t*)outbuf, &ret);
+    }
+    if(s_mode == MODE_CELT_ONLY){
+        ec_dec_init((uint8_t *)inbuf, packetLen);
+        ret = celt_decode_with_ec((int16_t*)outbuf, samplesPerFrame);
+    }
+
+//log_w("ret %i", ret);
+    return ret;
+}
+//----------------------------------------------------------------------------------------------------------------------------------------------------
 int8_t opus_FramePacking_Code0(uint8_t *inbuf, int32_t *bytesLeft, int16_t *outbuf, int32_t packetLen, uint16_t samplesPerFrame){
 
 /*  Code 0: One Frame in the Packet
@@ -334,20 +352,11 @@ int8_t opus_FramePacking_Code0(uint8_t *inbuf, int32_t *bytesLeft, int16_t *outb
     s_opusCurrentFilePos += packetLen;
     packetLen--;
     inbuf++;
-    int decoded_samples = 0;
-    if(s_mode == MODE_SILK_ONLY || s_mode == MODE_HYBRID){
-        int payloadSize_ms = max(10, 1000 * samplesPerFrame / 48000);
-        silk_InitDecoder(); // reset silk decoder
-        silk_setRawParams(1, 2, 20, 16000, 48000);
-        silk_Decode(0, 1, (int16_t*)outbuf, &ret);
-        //    outbuf += silk_frame_size * 2;
 
-//log_w("ret %i", ret);
-    }
-    if(s_mode == MODE_CELT_ONLY){
-        ec_dec_init((uint8_t *)inbuf, packetLen);
-        ret = celt_decode_with_ec((int16_t*)outbuf, samplesPerFrame);
-        if(ret < 0) return ret;
+    ret = opus_decode_frame(inbuf, outbuf, packetLen, samplesPerFrame);
+log_w("code 0, ret %i", ret);
+    if(ret < 0){
+        return ret; // decode err
     }
     s_opusValidSamples = ret;
     return ERR_OPUS_NONE;
@@ -378,33 +387,26 @@ int8_t opus_FramePacking_Code1(uint8_t *inbuf, int32_t *bytesLeft, int16_t *outb
 
 
     int32_t ret = 0;
-    int32_t silk_err = 0;
     static uint16_t c1fs = 0;
     if(*frameCount == 0){
         packetLen--;
         inbuf++;
         *bytesLeft -= 1;
         s_opusCurrentFilePos += 1;
-        c1fs = packetLen / 2;
+//        c1fs = packetLen / 2;
 //      log_w("OPUS countCode 1 len %i, c1fs %i", len, c1fs);
         *frameCount = 2;
     }
     if(*frameCount > 0){
-        if(s_mode == MODE_SILK_ONLY || s_mode == MODE_HYBRID){
-            int payloadSize_ms = max(10, 1000 * samplesPerFrame / 48000);
-            silk_InitDecoder(); // reset silk decoder
-            silk_setRawParams(1, 2, payloadSize_ms, s_internalSampleRate, 48000);
-            silk_err = silk_Decode(0, 1, (int16_t*)outbuf, &ret);
-log_w("ret %i", ret);
+        ret = opus_decode_frame(inbuf, outbuf, packetLen / 2, samplesPerFrame);
+log_w("code 1, ret %i", ret);
+        if(ret < 0){
+            *frameCount = 0;
+            return ret;  // decode err
         }
-        if(s_mode == MODE_CELT_ONLY){
-        ec_dec_init((uint8_t *)inbuf, c1fs);
-            ret = celt_decode_with_ec((int16_t*)outbuf, samplesPerFrame);
-            if(ret < 0){return ret;}
-        }
-        s_opusValidSamples = ret;
         *bytesLeft -= c1fs;
         s_opusCurrentFilePos += c1fs;
+        s_opusValidSamples = ret;
     }
     *frameCount -= 1;
     return ERR_OPUS_NONE;
@@ -466,40 +468,31 @@ int8_t opus_FramePacking_Code2(uint8_t *inbuf, int32_t *bytesLeft, int16_t *outb
         *frameCount = 2;
     }
     if(*frameCount == 2){
-        if(s_mode == MODE_SILK_ONLY || s_mode == MODE_HYBRID){
-            int payloadSize_ms = max(10, 1000 * samplesPerFrame / 48000);
-            silk_InitDecoder(); // reset silk decoder
-            silk_setRawParams(1, 2, payloadSize_ms, s_internalSampleRate, 48000);
-            silk_Decode(0, 1, (int16_t*)outbuf, &ret);
-log_w("ret %i", ret);
-        }
-        if(s_mode == MODE_CELT_ONLY){
-            ec_dec_init((uint8_t *)inbuf, firstFrameLength);
-            ret = celt_decode_with_ec((int16_t*)outbuf, samplesPerFrame);
-            if(ret < 0){return ret;}
-        }
-        s_opusValidSamples = ret;
+        ret = opus_decode_frame(inbuf, outbuf, firstFrameLength, samplesPerFrame);
+log_w("code 2, ret %i", ret);
         *bytesLeft -= firstFrameLength;
         s_opusCurrentFilePos += firstFrameLength;
-    }
-    if(*frameCount == 1){
-        if(s_mode == MODE_SILK_ONLY || s_mode == MODE_HYBRID){
-            int payloadSize_ms = max(10, 1000 * samplesPerFrame / 48000);
-            silk_InitDecoder(); // reset silk decoder
-            silk_setRawParams(1, 2, payloadSize_ms, s_internalSampleRate, 48000);
-            silk_Decode(0, 1, (int16_t*)outbuf, &ret);
-log_w("ret %i", ret);
-        }
-        if(s_mode == MODE_CELT_ONLY){
-            ec_dec_init((uint8_t *)inbuf, secondFrameLength);
-            ret = celt_decode_with_ec((int16_t*)outbuf, samplesPerFrame);
-            if(ret < 0){return ret;}
+        if(ret < 0){
+            *frameCount = 0;
+            return ret;  // decode err
         }
         s_opusValidSamples = ret;
+        *frameCount -= 1;
+        return ERR_OPUS_NONE;
+    }
+    if(*frameCount == 1){
+        ret = opus_decode_frame(inbuf, outbuf, secondFrameLength, samplesPerFrame);
+log_w("code 2, ret %i", ret);
+        if(ret < 0){
+            *frameCount = 0;
+            return ret;  // decode err
+        }
         *bytesLeft -= secondFrameLength;
         s_opusCurrentFilePos += secondFrameLength;
+        s_opusValidSamples = ret;
+        *frameCount -= 1;
+        return ERR_OPUS_NONE;
     }
-    *frameCount -= 1;
     return ERR_OPUS_NONE;
 }
 
@@ -632,17 +625,11 @@ int8_t opus_FramePacking_Code3(uint8_t *inbuf, int32_t *bytesLeft, int16_t *outb
     }
     *bytesLeft -= fs;
     s_opusCurrentFilePos += fs;
-    if(s_mode == MODE_SILK_ONLY || s_mode == MODE_HYBRID){
-        int payloadSize_ms = max(10, 1000 * samplesPerFrame / 48000);
-        silk_InitDecoder(); // reset silk decoder
-        silk_setRawParams(1, 2, payloadSize_ms, s_internalSampleRate, 48000);
-        silk_Decode(0, 1, (int16_t*)outbuf, &ret);
-log_w("ret %i", ret);
-    }
-    if(s_mode == MODE_CELT_ONLY){
-        ec_dec_init((uint8_t *)inbuf, fs);
-        ret = celt_decode_with_ec((int16_t*)outbuf, samplesPerFrame);
-        if(ret < 0) return ret; // celt error
+    ret = opus_decode_frame(inbuf, outbuf, fs, samplesPerFrame);
+log_w("code 3, ret %i", ret);
+    if(ret < 0){
+        *frameCount = 0;
+        return ret; // decode error
     }
     s_opusValidSamples = ret;
     *frameCount -= 1;
