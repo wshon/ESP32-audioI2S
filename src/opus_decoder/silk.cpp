@@ -18,6 +18,7 @@ LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF
 
 silk_decoder_state s_channel_state[2];
 silk_decoder       s_decState;
+extern ec_ctx_t    s_ec;
 
 uint8_t            s_channelsInternal = 0;
 uint8_t            s_payloadSize_ms = 0;

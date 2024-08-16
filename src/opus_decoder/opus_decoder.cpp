@@ -335,8 +335,12 @@ int32_t opus_decode_frame(uint8_t *inbuf, int16_t *outbuf, int32_t packetLen, ui
         else if(s_bandWidth == OPUS_BANDWIDTH_WIDEBAND) { s_internalSampleRate = 16000; }
         else { s_internalSampleRate = 16000; }
 
+//log_w("samplesPerFrame %i", samplesPerFrame);
+        int spf = opus_packet_get_samples_per_frame(inbuf, samplesPerFrame); // todo
+log_w("spf %i", spf);
+        ec_dec_init((uint8_t *)inbuf, 32);
         silk_InitDecoder();
-        ec_dec_init((uint8_t *)inbuf, samplesPerFrame);
+//log_w("payloadSize_ms %i, s_internalSampleRate %i", payloadSize_ms, s_internalSampleRate);
         silk_setRawParams(1, 2, payloadSize_ms, s_internalSampleRate, 48000);
         int silk_ret = silk_Decode(0, 1, (int16_t*)outbuf, &silk_frame_size);
 
