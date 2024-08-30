@@ -9,8 +9,6 @@
 //                                     O G G / O P U S     I M P L.
 //----------------------------------------------------------------------------------------------------------------------
 #include "opus_decoder.h"
-#include "celt.h"
-#include "silk.h"
 #include "Arduino.h"
 #include <vector>
 
@@ -336,9 +334,9 @@ int32_t opus_decode_frame(uint8_t *inbuf, int16_t *outbuf, int32_t packetLen, ui
         else { s_internalSampleRate = 16000; }
 
 //log_w("samplesPerFrame %i", samplesPerFrame);
-        int spf = opus_packet_get_samples_per_frame(inbuf, samplesPerFrame); // todo
-log_w("spf %i", spf);
-        ec_dec_init((uint8_t *)inbuf, 32);
+    //    int spf = opus_packet_get_samples_per_frame(inbuf, samplesPerFrame); // todo
+//log_w("spf %i", packetLen);
+        ec_dec_init((uint8_t *)inbuf, packetLen);
         silk_InitDecoder();
 //log_w("payloadSize_ms %i, s_internalSampleRate %i", payloadSize_ms, s_internalSampleRate);
         silk_setRawParams(1, 2, payloadSize_ms, s_internalSampleRate, 48000);
@@ -356,7 +354,20 @@ log_w("spf %i", spf);
         log_w("Hybrid");
     }
 
+    if(s_bandWidth) {
+//log_e("");
+        int endband = 21;
 
+        switch(s_bandWidth) {
+            case OPUS_BANDWIDTH_NARROWBAND: endband = 13; break;
+            case OPUS_BANDWIDTH_MEDIUMBAND:
+            case OPUS_BANDWIDTH_WIDEBAND: endband = 17; break;
+            case OPUS_BANDWIDTH_SUPERWIDEBAND: endband = 19; break;
+            case OPUS_BANDWIDTH_FULLBAND: endband = 21; break;
+            default: break;
+        }
+        celt_decoder_ctl(endband);
+    }
 
 
 

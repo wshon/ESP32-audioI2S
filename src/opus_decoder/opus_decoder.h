@@ -3,6 +3,9 @@
 //#pragma GCC optimize ("O3")
 //#pragma GCC diagnostic ignored "-Wnarrowing"
 
+#include "celt.h"
+#include "silk.h"
+
 #include <stdint.h>
 #include <memory.h>
 #include <vector>
