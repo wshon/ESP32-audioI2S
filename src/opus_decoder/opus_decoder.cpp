@@ -14,10 +14,6 @@
 
 
 // global vars
-const uint32_t CELT_SET_END_BAND_REQUEST   = 10012;
-const uint32_t CELT_SET_START_BAND_REQUEST = 10010;
-const uint32_t CELT_SET_SIGNALLING_REQUEST = 10016;
-const uint32_t CELT_GET_AND_CLEAR_ERROR_REQUEST = 10007;
 
 const uint16_t  s_Fs   = 48000;      // 48000
 const uint16_t  s_F20  = s_Fs / 50;  //   960

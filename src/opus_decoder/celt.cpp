@@ -48,11 +48,11 @@ int32_t*      s_trim_offsetBuff;    // mem in clt_compute_allocation
 uint8_t*      s_collapse_masksBuff; // mem n celt_decode_with_ec
 int16_t*      s_tmpBuff;            // mem in deinterleave_hadamard and interleave_hadamard
 
-const uint32_t CELT_GET_AND_CLEAR_ERROR_REQUEST = 10007;
+//const uint32_t CELT_GET_AND_CLEAR_ERROR_REQUEST = 10007;
 const uint32_t CELT_SET_CHANNELS_REQUEST        = 10008;
-const uint32_t CELT_SET_END_BAND_REQUEST        = 10012;
+//const uint32_t CELT_SET_END_BAND_REQUEST        = 10012;
 const uint32_t CELT_GET_MODE_REQUEST            = 10015;
-const uint32_t CELT_SET_SIGNALLING_REQUEST      = 10016;
+// const uint32_t CELT_SET_SIGNALLING_REQUEST      = 10016;
 const uint32_t CELT_SET_TONALITY_REQUEST        = 10018;
 const uint32_t CELT_SET_TONALITY_SLOPE_REQUEST  = 10020;
 const uint32_t CELT_SET_ANALYSIS_REQUEST        = 10022;
