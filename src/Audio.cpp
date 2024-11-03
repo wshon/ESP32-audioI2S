@@ -4460,7 +4460,7 @@ int Audio::sendBytes(uint8_t* data, size_t len) {
         f_setDecodeParamsOnce = true;
         nextSync = findNextSync(data, len);
         if(nextSync == -1) return len;
-        if(nextSync == 0) { m_f_playing = true; }
+        if(nextSync >= 0) { m_f_playing = true; }
         return nextSync;
     }
     // m_f_playing is true at this pos
