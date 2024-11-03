@@ -17,6 +17,8 @@
 
 //------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------
 AudioBuffer::AudioBuffer(size_t maxBlockSize) {
+    mutex_inBuff        = xSemaphoreCreateMutex();
+
     if(maxBlockSize) m_resBuffSizeRAM = maxBlockSize;
     if(maxBlockSize) m_maxBlockSize = maxBlockSize;
 }
@@ -24,6 +26,8 @@ AudioBuffer::AudioBuffer(size_t maxBlockSize) {
 AudioBuffer::~AudioBuffer() {
     if(m_buffer) free(m_buffer);
     m_buffer = NULL;
+
+    vSemaphoreDelete(mutex_inBuff);
 }
 
 void AudioBuffer::setBufsize(int ram, int psram) {
@@ -62,6 +66,7 @@ void AudioBuffer::changeMaxBlockSize(uint16_t mbs) {
 uint16_t AudioBuffer::getMaxBlockSize() { return m_maxBlockSize; }
 
 size_t AudioBuffer::freeSpace() {
+    xSemaphoreTake(mutex_inBuff, 0.3 * configTICK_RATE_HZ);
     if(m_readPtr == m_writePtr) {
         if(m_f_isEmpty == true) m_freeSpace = m_buffSize;
         else m_freeSpace = 0;
@@ -72,10 +77,12 @@ size_t AudioBuffer::freeSpace() {
     if(m_readPtr > m_writePtr) {
         m_freeSpace = m_readPtr - m_writePtr;
     }
+    xSemaphoreGive(mutex_inBuff);
     return m_freeSpace;
 }
 
 size_t AudioBuffer::writeSpace() {
+    xSemaphoreTake(mutex_inBuff, 0.3 * configTICK_RATE_HZ);
     if(m_readPtr == m_writePtr) {
         if(m_f_isEmpty == true) m_writeSpace = m_endPtr - m_writePtr;
         else m_writeSpace = 0;
@@ -86,10 +93,12 @@ size_t AudioBuffer::writeSpace() {
     if(m_readPtr > m_writePtr) {
         m_writeSpace = m_readPtr - m_writePtr;
     }
+    xSemaphoreGive(mutex_inBuff);
     return m_writeSpace;
 }
 
 size_t AudioBuffer::bufferFilled() {
+    xSemaphoreTake(mutex_inBuff, 0.3 * configTICK_RATE_HZ);
     if(m_readPtr == m_writePtr) {
         if(m_f_isEmpty == true) m_dataLength = 0;
         else m_dataLength = m_buffSize;
@@ -100,10 +109,12 @@ size_t AudioBuffer::bufferFilled() {
     if(m_readPtr > m_writePtr) {
         m_dataLength = (m_endPtr - m_readPtr) + (m_writePtr - m_buffer);
     }
+    xSemaphoreGive(mutex_inBuff);
     return m_dataLength;
 }
 
 size_t AudioBuffer::getMaxAvailableBytes() {
+    xSemaphoreTake(mutex_inBuff, 0.3 * configTICK_RATE_HZ);
     if(m_readPtr == m_writePtr) {
     //   if(m_f_start)m_dataLength = 0;
         if(m_f_isEmpty == true) m_dataLength = 0;
@@ -115,42 +126,51 @@ size_t AudioBuffer::getMaxAvailableBytes() {
     if(m_readPtr > m_writePtr) {
         m_dataLength = (m_endPtr - m_readPtr);
     }
+    xSemaphoreGive(mutex_inBuff);
     return m_dataLength;
 }
 
 void AudioBuffer::bytesWritten(size_t bw) {
     if(!bw) return;
+    xSemaphoreTake(mutex_inBuff, 0.3 * configTICK_RATE_HZ);
     m_writePtr += bw;
     if(m_writePtr == m_endPtr) { m_writePtr = m_buffer; }
     if(m_writePtr > m_endPtr) log_e("m_writePtr %i, m_endPtr %i", m_writePtr, m_endPtr);
     m_f_isEmpty = false;
+    xSemaphoreGive(mutex_inBuff);
 }
 
 void AudioBuffer::bytesWasRead(size_t br) {
     if(!br) return;
+    xSemaphoreTake(mutex_inBuff, 0.3 * configTICK_RATE_HZ);
     m_readPtr += br;
     if(m_readPtr >= m_endPtr) {
         size_t tmp = m_readPtr - m_endPtr;
         m_readPtr = m_buffer + tmp;
     }
     if(m_readPtr == m_writePtr) m_f_isEmpty = true;
+    xSemaphoreGive(mutex_inBuff);
 }
 
 uint8_t* AudioBuffer::getWritePtr() { return m_writePtr; }
 
 uint8_t* AudioBuffer::getReadPtr() {
+    xSemaphoreTake(mutex_inBuff, 0.3 * configTICK_RATE_HZ);
     int32_t len = m_endPtr - m_readPtr;
     if(len < m_maxBlockSize) {                            // be sure the last frame is completed
         memcpy(m_endPtr, m_buffer, m_maxBlockSize - (len)); // cpy from m_buffer to m_endPtr with len
     }
+    xSemaphoreGive(mutex_inBuff);
     return m_readPtr;
 }
 
 void AudioBuffer::resetBuffer() {
+    xSemaphoreTake(mutex_inBuff, 0.3 * configTICK_RATE_HZ);
     m_writePtr = m_buffer;
     m_readPtr = m_buffer;
     m_endPtr = m_buffer + m_buffSize;
     m_f_isEmpty = true;
+    xSemaphoreGive(mutex_inBuff);
 }
 
 uint32_t AudioBuffer::getWritePos() { return m_writePtr - m_buffer; }

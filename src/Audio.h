@@ -130,6 +130,9 @@ protected:
     bool              m_f_init           = false;
     bool              m_f_isEmpty        = true;
     bool              m_f_psram          = false;    // PSRAM is available (and used...)
+
+private:
+    SemaphoreHandle_t     mutex_inBuff;
 };
 //----------------------------------------------------------------------------------------------------------------------
 
